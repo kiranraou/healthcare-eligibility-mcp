@@ -1,0 +1,13 @@
+[project]
+name = "healthcare-eligibility-mcp"
+version = "1.0.0"
+description = "AI-powered Healthcare Eligibility MCP Server using X12 270/271, Databricks, Python, and MCP tools."
+requires-python = ">=3.10"
+
+[tool.pytest.ini_options]
+pythonpath = ["."]
+testpaths = ["tests"]
+
+[tool.ruff]
+line-length = 120
+target-version = "py312"
