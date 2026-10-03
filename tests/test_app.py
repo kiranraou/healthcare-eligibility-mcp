@@ -41,3 +41,11 @@ def test_worklist_and_analytics():
     assert not at.exception
     assert any("Silver +9 rows" in s.value for s in at.success)
     assert {m.label: m.value for m in at.metric}["Eligibility checks"] == "9"
+
+
+def test_sidebar_offers_bring_your_own_keys(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    at = _app()
+    labels = [t.label for t in at.sidebar.text_input]
+    assert {"Anthropic API key", "Databricks token", "Databricks HTTP path"} <= set(labels)
+    assert any("Your API keys" in w.value for w in at.warning)

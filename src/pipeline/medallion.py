@@ -13,7 +13,7 @@ import json
 from datetime import datetime, timezone
 
 from src import db
-from src.config import get_settings
+from src.config import Settings, get_settings
 from src.pipeline.sinks import Sink, get_sink
 from src.rules import summarize_benefits
 from src.x12.x271 import parse_271
@@ -205,9 +205,9 @@ def silver_to_gold(sink: Sink) -> list[str]:
     return list(GOLD_TABLES)
 
 
-def run(backend: str | None = None) -> dict:
+def run(backend: str | None = None, settings: Settings | None = None) -> dict:
     """Run bronze -> silver -> gold and return a summary."""
-    sink = get_sink(get_settings(), backend)
+    sink = get_sink(settings or get_settings(), backend)
     try:
         bronze_rows = load_bronze(sink)
         silver_rows = bronze_to_silver(sink)
@@ -222,9 +222,9 @@ def run(backend: str | None = None) -> dict:
         sink.close()
 
 
-def read_gold(backend: str | None = None) -> dict[str, list[dict]]:
+def read_gold(backend: str | None = None, settings: Settings | None = None) -> dict[str, list[dict]]:
     """Return the contents of every gold table (empty lists if the pipeline has not run)."""
-    sink = get_sink(get_settings(), backend)
+    sink = get_sink(settings or get_settings(), backend)
     try:
         result = {}
         for name in GOLD_TABLES:

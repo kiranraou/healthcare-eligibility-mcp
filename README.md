@@ -159,7 +159,7 @@ healthcare-eligibility-mcp/
 │   └── pipeline/
 │       ├── sinks.py          # SQLite and Databricks SQL backends
 │       └── medallion.py      # Bronze → Silver → Gold
-├── tests/                    # pytest suite (51 tests)
+├── tests/                    # pytest suite (53 tests)
 ├── scripts/smoke_test.py     # HTTP smoke test used by CI
 ├── data/                     # Local SQLite database (generated, git-ignored)
 ├── Dockerfile
@@ -190,6 +190,20 @@ pip install -r requirements.txt
 cp .env.example .env        # then fill in what you need
 python -m src.seed          # optional: the server seeds on first start
 ```
+
+### Use your own API keys
+
+The project never ships with keys. Bring your own in either place:
+
+- **Terminal and MCP server:** copy `.env.example` to `.env` and paste your keys after the `=` signs. `.env` is git-ignored, so your keys are never uploaded.
+- **Streamlit app:** open the sidebar section **🔑 Your API keys** and paste them there. They are used only for that browser session and are never saved.
+
+| Key | Needed for | Where to get it |
+|---|---|---|
+| `ANTHROPIC_API_KEY` | AI agent, "Explain with Claude" | console.anthropic.com → API keys (the account needs API credits) |
+| `DATABRICKS_SERVER_HOSTNAME`, `DATABRICKS_HTTP_PATH`, `DATABRICKS_TOKEN` | Delta tables on Databricks | SQL Warehouses → Connection details; Settings → Developer → Access tokens |
+
+Without keys, eligibility checks, the worklist, the MCP server and local SQLite analytics all still work.
 
 In VS Code, run **Python: Select Interpreter** and choose `.venv/bin/python`.
 

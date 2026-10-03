@@ -96,3 +96,12 @@ async def test_agent_answers_with_mcp_tools():
     assert find_result["tool_use_id"] == "toolu_1" and "P001" in json.dumps(find_result["content"])
     check_result = third["messages"][-1]["content"][0]
     assert "INVALID_MEMBER_ID" in json.dumps(check_result["content"])
+
+
+def test_client_uses_key_typed_by_user(monkeypatch):
+    monkeypatch.delenv("ANTHROPIC_API_KEY", raising=False)
+    monkeypatch.delenv("ANTHROPIC_WORKSPACE_ID", raising=False)
+    client = llm.make_client("sk-ant-test-key", "wrkspc_test")
+    assert client.api_key == "sk-ant-test-key"
+    assert client.default_headers["anthropic-workspace-id"] == "wrkspc_test"
+    assert "anthropic-workspace-id" not in llm.make_async_client("sk-ant-test-key").default_headers

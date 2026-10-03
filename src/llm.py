@@ -8,18 +8,23 @@ import anthropic
 from src.config import get_settings
 
 
-def _default_headers() -> dict[str, str]:
+def _client_options(api_key: str | None, workspace_id: str | None) -> dict:
+    """Use the key passed in (e.g. typed into the app), else ANTHROPIC_API_KEY from .env."""
+    options: dict = {"api_key": api_key} if api_key else {}
     # Keys not scoped to a workspace must name one on every request.
-    workspace_id = os.getenv("ANTHROPIC_WORKSPACE_ID")
-    return {"anthropic-workspace-id": workspace_id} if workspace_id else {}
+    workspace_id = workspace_id or os.getenv("ANTHROPIC_WORKSPACE_ID")
+    if workspace_id:
+        options["default_headers"] = {"anthropic-workspace-id": workspace_id}
+    return options
 
 
-def make_client() -> anthropic.Anthropic:
-    return anthropic.Anthropic(default_headers=_default_headers())
+def make_client(api_key: str | None = None, workspace_id: str | None = None) -> anthropic.Anthropic:
+    return anthropic.Anthropic(**_client_options(api_key, workspace_id))
 
 
-def make_async_client() -> anthropic.AsyncAnthropic:
-    return anthropic.AsyncAnthropic(default_headers=_default_headers())
+def make_async_client(api_key: str | None = None, workspace_id: str | None = None) -> anthropic.AsyncAnthropic:
+    return anthropic.AsyncAnthropic(**_client_options(api_key, workspace_id))
+
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 

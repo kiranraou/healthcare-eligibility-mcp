@@ -4,6 +4,7 @@
 """
 
 import asyncio
+import dataclasses
 import os
 from datetime import date
 
@@ -71,7 +72,30 @@ with st.sidebar:
         )
         st.session_state.explanation = None
     st.divider()
+    with st.expander("🔑 Your API keys", expanded=not (os.getenv("ANTHROPIC_API_KEY") or settings.databricks_enabled)):
+        st.caption(
+            "Bring your own keys. They are used only in this browser session and are never "
+            "saved, logged or shared. Leave blank to use the values in .env."
+        )
+        anthropic_key = st.text_input("Anthropic API key", type="password", key="anthropic_key",
+                                      placeholder="sk-ant-...").strip()
+        workspace_id = st.text_input("Anthropic workspace ID (optional)", key="anthropic_workspace_id",
+                                     help="Only needed if your key is not scoped to a workspace.").strip()
+        db_host = st.text_input("Databricks server hostname", key="databricks_host",
+                                placeholder="dbc-xxxxxxxx-xxxx.cloud.databricks.com").strip()
+        db_http_path = st.text_input("Databricks HTTP path", key="databricks_http_path",
+                                     placeholder="/sql/1.0/warehouses/xxxxxxxxxxxxxxxx").strip()
+        db_token = st.text_input("Databricks token", type="password", key="databricks_token",
+                                 placeholder="dapi...").strip()
+    settings = dataclasses.replace(
+        settings,
+        databricks_host=db_host or settings.databricks_host,
+        databricks_http_path=db_http_path or settings.databricks_http_path,
+        databricks_token=db_token or settings.databricks_token,
+    )
+    has_anthropic_key = bool(anthropic_key or os.getenv("ANTHROPIC_API_KEY"))
     st.caption(f"Provider: {settings.provider_name} · NPI {settings.provider_npi}")
+    st.caption("Claude: " + ("key set" if has_anthropic_key else "no key"))
     st.caption("Databricks: " + ("configured" if settings.databricks_enabled else "not configured"))
     st.caption("All data is synthetic.")
 
@@ -158,7 +182,9 @@ with check_tab:
         if st.button("✨ Explain this result with Claude"):
             with st.spinner("Asking Claude…"):
                 try:
-                    st.session_state.explanation = llm.explain_eligibility(result)
+                    st.session_state.explanation = llm.explain_eligibility(
+                        result, client=llm.make_client(anthropic_key or None, workspace_id or None)
+                    )
                 except Exception as exc:
                     st.session_state.explanation = None
                     st.error(f"Claude is unavailable: {anthropic_error(exc)}")
@@ -202,7 +228,7 @@ with analytics_tab:
     if st.button("Run Bronze → Silver → Gold pipeline"):
         with st.spinner(f"Running pipeline on {backend}…"):
             try:
-                summary = medallion.run(backend)
+                summary = medallion.run(backend, settings)
                 st.success(
                     f"Bronze +{summary['bronze_rows_added']} rows, Silver +{summary['silver_rows_added']} rows, "
                     f"Gold rebuilt: {', '.join(summary['gold_tables'])}"
@@ -212,7 +238,7 @@ with analytics_tab:
 
     try:
         with st.spinner("Loading Gold tables…"):
-            gold = medallion.read_gold(backend)
+            gold = medallion.read_gold(backend, settings)
     except Exception as exc:
         gold = None
         st.error(f"Could not read Gold tables: {exc}")
@@ -269,12 +295,15 @@ with ai_tab:
         "Question",
         value="Check John Smith's eligibility and tell me why he was rejected and what the RCM team should do.",
     )
-    if not os.getenv("ANTHROPIC_API_KEY"):
-        st.warning("Set ANTHROPIC_API_KEY in .env to use the AI assistant.")
+    if not has_anthropic_key:
+        st.warning("Paste your Anthropic API key in the sidebar under **🔑 Your API keys** "
+                   "(or set ANTHROPIC_API_KEY in .env) to use the AI assistant.")
     if st.button("Ask the agent", type="primary"):
         with st.spinner("Claude is working through the MCP tools…"):
             try:
-                answer = asyncio.run(agent.ask(question))
+                answer = asyncio.run(agent.ask(
+                    question, client=llm.make_async_client(anthropic_key or None, workspace_id or None)
+                ))
                 st.session_state.agent_answer = answer
             except Exception as exc:
                 st.session_state.agent_answer = None
