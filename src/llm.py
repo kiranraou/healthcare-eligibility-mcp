@@ -1,10 +1,25 @@
 """Claude-powered explanation of an eligibility result (single API call, no tools)."""
 
 import json
+import os
 
 import anthropic
 
 from src.config import get_settings
+
+
+def _default_headers() -> dict[str, str]:
+    # Keys not scoped to a workspace must name one on every request.
+    workspace_id = os.getenv("ANTHROPIC_WORKSPACE_ID")
+    return {"anthropic-workspace-id": workspace_id} if workspace_id else {}
+
+
+def make_client() -> anthropic.Anthropic:
+    return anthropic.Anthropic(default_headers=_default_headers())
+
+
+def make_async_client() -> anthropic.AsyncAnthropic:
+    return anthropic.AsyncAnthropic(default_headers=_default_headers())
 
 FALLBACK_BETA = "server-side-fallback-2026-07-01"
 
@@ -26,7 +41,7 @@ def _text(message) -> str:
 
 def explain_eligibility(result: dict, client: anthropic.Anthropic | None = None) -> str:
     """Turn a service.check_eligibility() result into a plain-language RCM explanation."""
-    client = client or anthropic.Anthropic()
+    client = client or make_client()
     payload = {k: v for k, v in result.items() if k not in ("x12_270", "x12_271")}
     message = client.beta.messages.create(
         model=get_settings().anthropic_model,

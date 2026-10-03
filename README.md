@@ -139,6 +139,7 @@ The mock payer keeps its own enrollment file, separate from the provider's regis
 ```
 healthcare-eligibility-mcp/
 ├── server.py                 # MCP server (tools, resources, prompts)
+├── app.py                    # Streamlit UI
 ├── src/
 │   ├── config.py             # Settings from environment / .env
 │   ├── models.py             # Pydantic domain models
@@ -158,7 +159,7 @@ healthcare-eligibility-mcp/
 │   └── pipeline/
 │       ├── sinks.py          # SQLite and Databricks SQL backends
 │       └── medallion.py      # Bronze → Silver → Gold
-├── tests/                    # pytest suite (48 tests)
+├── tests/                    # pytest suite (51 tests)
 ├── scripts/smoke_test.py     # HTTP smoke test used by CI
 ├── data/                     # Local SQLite database (generated, git-ignored)
 ├── Dockerfile
@@ -217,6 +218,19 @@ Add this to `claude_desktop_config.json`, using your own absolute paths:
 }
 ```
 
+### Streamlit app
+
+```bash
+streamlit run app.py        # http://localhost:8501
+```
+
+| Tab | What it shows |
+|---|---|
+| Eligibility check | Input (patient, registration coverage, validation, X12 270) next to output (X12 271, AAA rejections, benefits), plus KPIs, rule findings, denial analysis and RCM actions. "Explain with Claude" adds a plain-language summary. |
+| Worklist | Every patient checked and ranked by denial risk, with the next action and owner |
+| Analytics | Runs Bronze → Silver → Gold on SQLite or Databricks; charts checks by status and failure rate per payer |
+| AI assistant | Ask the Claude agent a question; shows the MCP tools it called and its answer |
+
 ### Ask the AI agent
 
 Requires `ANTHROPIC_API_KEY` in `.env`. The agent starts `server.py` as an MCP server and gives Claude all of its tools.
@@ -225,7 +239,7 @@ Requires `ANTHROPIC_API_KEY` in `.env`. The agent starts `server.py` as an MCP s
 python -m src.agent --show-tools "Check John Smith's eligibility and tell me why he was rejected and what the RCM team should do."
 ```
 
-The default model is `claude-opus-5-5`; override it with `ANTHROPIC_MODEL`. Requests use the Claude API's server-side refusal fallback (`fallbacks: "default"`).
+If your key is not scoped to a workspace, also set `ANTHROPIC_WORKSPACE_ID`. The default model is `claude-opus-5-5`; override it with `ANTHROPIC_MODEL`. Requests use the Claude API's server-side refusal fallback (`fallbacks: "default"`).
 
 ### Run the Bronze → Silver → Gold pipeline
 
@@ -299,4 +313,4 @@ GitHub Actions runs the tests on every push and pull request, then builds the Do
 
 ## Tech stack
 
-Python 3.12 · MCP Python SDK v2 (`MCPServer`) · Anthropic Python SDK (Claude tool runner + MCP helpers) · Pydantic · SQLite · Databricks SQL Connector (Delta Lake) · pytest · Docker · GitHub Actions
+Python 3.12 · Streamlit · MCP Python SDK v2 (`MCPServer`) · Anthropic Python SDK (Claude tool runner + MCP helpers) · Pydantic · SQLite · Databricks SQL Connector (Delta Lake) · pytest · Docker · GitHub Actions

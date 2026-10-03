@@ -18,7 +18,7 @@ from mcp import ClientSession, StdioServerParameters
 from mcp.client.stdio import stdio_client
 
 from src.config import PROJECT_ROOT, get_settings
-from src.llm import FALLBACK_BETA, LLMRefusalError
+from src.llm import FALLBACK_BETA, LLMRefusalError, make_async_client
 
 AGENT_SYSTEM = """You are an eligibility and revenue cycle management (RCM) agent for a medical group.
 You have MCP tools for patient lookup, X12 270/271 eligibility checks, benefits, coordination of
@@ -51,7 +51,7 @@ def server_parameters() -> StdioServerParameters:
 async def run_with_session(question: str, session: ClientSession,
                            client: anthropic.AsyncAnthropic | None = None) -> AgentResult:
     """Answer a question with Claude, using the tools of an initialized MCP session."""
-    client = client or anthropic.AsyncAnthropic()
+    client = client or make_async_client()
     mcp_tools = (await session.list_tools()).tools
     runner = client.beta.messages.tool_runner(
         model=get_settings().anthropic_model,
@@ -83,10 +83,17 @@ async def run_with_session(question: str, session: ClientSession,
 
 async def ask(question: str, client: anthropic.AsyncAnthropic | None = None) -> AgentResult:
     """Start the MCP server, answer the question end to end, and shut the server down."""
+    # Errors are re-raised outside the MCP task groups so callers get the original
+    # exception instead of an ExceptionGroup.
+    error: Exception | None = None
     async with stdio_client(server_parameters()) as (read, write):
         async with ClientSession(read, write) as session:
             await session.initialize()
-            return await run_with_session(question, session, client)
+            try:
+                return await run_with_session(question, session, client)
+            except (anthropic.APIError, LLMRefusalError) as exc:
+                error = exc
+    raise error
 
 
 def main() -> None:
