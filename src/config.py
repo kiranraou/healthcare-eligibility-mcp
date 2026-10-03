@@ -22,6 +22,7 @@ class Settings:
     databricks_token: str | None
     databricks_catalog: str
     databricks_schema: str
+    databricks_ca_file: str | None
     anthropic_model: str
 
     @property
@@ -40,5 +41,6 @@ def get_settings() -> Settings:
         databricks_token=os.getenv("DATABRICKS_TOKEN") or None,
         databricks_catalog=os.getenv("DATABRICKS_CATALOG", "workspace"),
         databricks_schema=os.getenv("DATABRICKS_SCHEMA", "eligibility"),
+        databricks_ca_file=os.getenv("DATABRICKS_CA_FILE") or None,
         anthropic_model=os.getenv("ANTHROPIC_MODEL", "claude-opus-5-5"),
     )

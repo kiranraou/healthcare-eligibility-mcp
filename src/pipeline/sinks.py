@@ -64,10 +64,13 @@ class DatabricksSink:
         if connection is None:
             from databricks import sql as dbsql
 
+            # A custom CA bundle is needed on networks that inspect HTTPS traffic.
+            tls = {"_tls_trusted_ca_file": settings.databricks_ca_file} if settings.databricks_ca_file else {}
             connection = dbsql.connect(
                 server_hostname=settings.databricks_host,
                 http_path=settings.databricks_http_path,
                 access_token=settings.databricks_token,
+                **tls,
             )
         self.conn = connection
         self.execute(f"CREATE SCHEMA IF NOT EXISTS {self.catalog}.{self.schema}")
